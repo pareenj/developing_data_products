@@ -1,0 +1,73 @@
+---
+title: "Peer_Assessment_1"
+author: "pareenj"
+date: "14 June 2015"
+output: html_document
+---
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r echo=TRUE}
+## Loading and preprocessing the data
+## 1
+activity <- read.csv("activity.csv") ##Load the data
+##2
+activity$date <- as.POSIXct(activity$date, format="%d-%m-%Y") ##Transform Date
+
+## What is mean total number of steps taken per day?
+## 1
+sum <- aggregate(activity$steps, by=list(activity$date), FUN=sum, na.rm=TRUE) ### Compute the total number of steps each day
+##2
+hist(sum$total, 
+     breaks=seq(from=0, to=25000, by=2500),
+     col="blue", 
+     xlab="Total number of steps", 
+     ylim=c(0, 20), 
+     main="Histogram of the total number of steps taken each day") ##Histogram of the total number of steps taken each day
+##3
+mean(sum$total) ## Mean of the total number of steps
+median(sum$total) ## Median of the total number of steps
+
+## What is the average daily activity pattern?
+## 1
+mean_data <- aggregate(activity$steps, by=list(activity$interval), FUN=mean, na.rm=TRUE)
+plot(mean_data$interval, mean_data$mean, type="l", col="blue", lwd=2, xlab="Interval", ylab="Average number of steps", main="Time-series of the average number of steps per intervals")
+## 2
+max_position <- which(mean_data$mean == max(mean_data$mean))
+max_interval <- mean_data[max_position, 1]
+
+##Imputing missing values
+## 1
+NA <- sum(is.na(activity$steps))
+## 2
+na_position <- which(is.na(activity$steps))
+mean_vector <- rep(mean(activity$steps, na.rm=TRUE), times=length(na_position))
+## 3
+activity[na_position, "steps"] <- mean_vector
+## 4
+sum <- aggregate(activity$steps, by=list(activity$date), FUN=sum)
+names(sum) <- c("date", "total")
+hist(sum$total, breaks=seq(from=0, to=25000, by=2500),col="red", xlab="Total number of steps", ylim=c(0, 30), main="Histogram of the total number of steps taken each day")
+
+mean(sum$total)
+median(sum$total)
+
+## Are there differences in activity patterns between weekdays and weekends?
+## 1
+activity$weektime <- as.factor(ifelse(weekdays(activity$date) %in% c("Saturday","Sunday"),"weekend", "weekday"))
+## 2
+mean_data <- aggregate(activity$steps, by=list(activity$daytype, activity$weekday, activity$interval), mean)
+
+xyplot(mean ~ interval | daytype, mean_data, type="l", lwd=1, xlab="Interval", ylab="Number of steps", layout = c(1,2))
+
+```
+
+You can also embed plots, for example:
+
+## ```{r, echo=FALSE}
+## plot(cars)
+## ```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
