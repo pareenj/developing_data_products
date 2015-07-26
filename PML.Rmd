@@ -1,0 +1,63 @@
+---
+title: "Prediction Assignment Writeup"
+author: "pareenj"
+date: "July 26, 2015"
+output: html_document
+---
+##Summary
+- Using devices such as **Jawbone Up**, **Nike FuelBand**, and **Fitbit** it is now possible to collect a large amount of data about personal activity. 
+- People take measurements about themselves regularly to improve their health, to find patterns in their behavior. One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it. 
+- In this project, our goal will be to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants. 
+- More information is available from the website here: [http://groupware.les.inf.puc-rio.br/har][http://groupware.les.inf.puc-rio.br/har]. 
+
+##Downloading the Data
+```{r}
+if (!file.exists("pml-training.csv")) {
+    download.file("http://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv", 
+                  destfile = "pml-training.csv")
+}
+if (!file.exists("pml-testing.csv")) {
+    download.file("http://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv", 
+                  destfile = "pml-testing.csv")
+}
+```
+
+##Getting and Cleaning the Data
+We read in the raw data and remove all the variables with any NA values in them.
+We also remove the variables indexed from 1 to 7, which just contain information like 'username', 'timestamp', etc. which intuitively do not affect the *classe* variable.
+
+```{r, results='hide'}
+library(lattice); library(ggplot2); library(caret); library(randomForest)
+raw_train <- read.csv("pml-training.csv", header = TRUE, na.strings = c("", "NA"))
+raw_test <- read.csv("pml-testing.csv", header = TRUE, na.strings = c("", "NA"))
+index <-which(colSums(is.na(raw_train))!=0)
+training <- raw_train[, -index]; testing <- raw_test[, -index]
+training <- training[, -(1:7)]; testing <- testing[, -(1:7)]
+```
+##Data Slicing
+We split the *training* data into two subgroups for validation.
+```{r}
+inTrain <- createDataPartition(y=training$classe, p=0.75, list=FALSE)
+my_training <- training[inTrain, ]; my_testing <- training[-inTrain,]
+```
+
+##Building the Model
+We first resample the tidy training data by "Cross-Validation" using the **trainControl()** function, and then build a model using the **train()** function and generate Random Forests.
+
+```{r}
+cv_ctrl <- trainControl(method = "cv", allowParallel = TRUE)
+rf_model <- train(classe ~ ., data = my_training, method = "rf", trControl = cv_ctrl)
+train_pred <- predict(rf_model, newdata = my_training)
+test_pred <- predict(rf_model, newdata = my_testing)
+conf_mat <- confusionMatrix(test_pred, my_testing$classe); print(conf_mat)
+accuracy <- conf_mat$overall[[1]] * 100
+```
+
+##Conclusion
+From the output of the confusion matrix, we get an accuracy of `r accuracy`% for the model. Thus, the random forests model has the higher accuracies than many other methods like "bootstrapping", "bagging", "boosting", etc.
+
+##Predicting the Outcomes on the Test Set
+```{r}
+final_pred <- predict(rf_model, testing)
+print(final_pred)
+```
